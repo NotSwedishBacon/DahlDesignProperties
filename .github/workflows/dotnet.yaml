@@ -21,17 +21,14 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
     - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1
+      uses: microsoft/setup-msbuild@v3
 
     - name: Setup NuGet
-      uses: NuGet/setup-nuget@v1.0.5
+      uses: NuGet/setup-nuget@v4
       
-    - name: Setup MS Build Systems
-      uses: microsoft/setup-msbuild@v1.1
-
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       name: Restore Caches
       id: cache
       with:
@@ -43,25 +40,63 @@ jobs:
     - name: Download Requirements # Used to download the SimHub DLLs - only if not in cache.
       if: steps.cache.outputs.cache-hit != 'true'
       run: | 
-        aria2c -j1 -o innounp050.rar "https://sourceforge.net/projects/innounp/files/innounp/innounp%200.50/innounp050.rar/download"
-        aria2c -j1 -o SimHub.9.12.4.zip "https://github.com/SHWotever/SimHub/releases/download/9.12.4/SimHub.9.12.4.zip"
+        Invoke-WebRequest -Uri "https://sourceforge.net/projects/innounp/files/innounp/innounp%200.50/innounp050.rar/download" -OutFile innounp050.rar
+        Invoke-WebRequest -Uri "https://github.com/SHWotever/SimHub/releases/download/9.12.4/SimHub.9.12.4.zip" -OutFile SimHub.9.12.4.zip
     
-    - name: Extract Requirements # Used to extract the SimHub DLLs
-      run: | 
-        7z x innounp050.rar
-        7z x SimHub.9.12.4.zip
-        dir
-        mkdir D:\SimHub
-        D:\a\DahlDesignProperties\DahlDesignProperties\innounp.exe -v -x -b -e -d"D:\Program Files (x86)\SimHub\" SimHubSetup_9.12.4.exe GameReaderCommon.dll SimHub.plugins.dll log4net.dll SharpDX.dll SimHub.logging.dll Microsoft.Bcl.AsyncInterfaces.dll
-        D:\a\DahlDesignProperties\DahlDesignProperties\innounp.exe -v -x -b -e -d"D:\a\DahlDesignProperties\DahlDesignProperties\DLLs" SimHubSetup_9.12.4.exe ACSharedMemory.dll ACToolsUtilities.dll GameReaderCommon.dll ICarsReader.dll InputManagerCS.dll iRacingSDK.dll SimHub.logging.dll SimHub.plugins.dll log4net.dll
-        D:\a\DahlDesignProperties\DahlDesignProperties\innounp.exe -v -x -b -e -d"D:\Program Files (x86)\SimHub\" SimHubSetup_9.12.4.exe MahApps.*.dll
+    - name: Extract Requirements
+      shell: pwsh
+      run: |
+        $innounpPath = Join-Path $env:RUNNER_TEMP "innounp"
+        $simHubArchivePath = Join-Path $env:RUNNER_TEMP "simhub"
+        $pluginPath = Join-Path $env:GITHUB_WORKSPACE "DLLs"
+        $simHubPath = Join-Path ${env:ProgramFiles(x86)} "SimHub"
+
+        New-Item -ItemType Directory -Force -Path $innounpPath, $simHubArchivePath, $pluginPath, $simHubPath | Out-Null
+        7z x innounp050.rar "-o$innounpPath" -y | Out-Null
+        7z x SimHub.9.12.4.zip "-o$simHubArchivePath" -y | Out-Null
+
+        $installer = Get-ChildItem -Path $simHubArchivePath -Filter "SimHubSetup_9.12.4.exe" -Recurse | Select-Object -First 1
+        if ($null -eq $installer) {
+          throw "SimHub installer was not found after extracting the archive"
+        }
+
+        $extractArgs = @(
+          "-v", "-x", "-b", "-e",
+          "-d$pluginPath",
+          $installer.FullName,
+          "ACSharedMemory.dll", "ACToolsUtilities.dll", "GameReaderCommon.dll",
+          "ICarsReader.dll", "InputManagerCS.dll", "iRacingSDK.dll",
+          "SimHub.Logging.dll", "SimHub.Plugins.dll", "log4net.dll",
+          "MahApps.*.dll", "SharpDX.dll", "Microsoft.Bcl.AsyncInterfaces.dll"
+        )
+
+        & (Join-Path $innounpPath "innounp.exe") @extractArgs
+        if ($LASTEXITCODE -ne 0) {
+          throw "innounp failed with exit code $LASTEXITCODE"
+        }
+
+        $extractedDlls = Get-ChildItem -Path $pluginPath -Filter "*.dll" -Recurse
+        Copy-Item -Path $extractedDlls.FullName -Destination $simHubPath -Force
+        $requiredDlls = @(
+          "ACSharedMemory.dll", "ACToolsUtilities.dll", "GameReaderCommon.dll",
+          "ICarsReader.dll", "InputManagerCS.dll", "iRacingSDK.dll",
+          "SimHub.Logging.dll", "SimHub.Plugins.dll", "log4net.dll"
+        )
+        foreach ($dll in $requiredDlls) {
+          if (-not (Get-ChildItem -Path $pluginPath -Filter $dll -Recurse)) {
+            throw "Required DLL was not extracted: $dll"
+          }
+        }
 
     - name: Restore Packages
       run: nuget restore "Dahl Design Properties.sln"
 
     - name: CopyCsvHelper
+      shell: pwsh
       run: |
-        cp "C:\Users\runneradmin\.nuget\packages\csvhelper\30.0.1\*.dll" "D:\Program Files (x86)\SimHub\"
+        $csvHelperPath = Join-Path $env:USERPROFILE ".nuget\packages\csvhelper\30.0.1\*.dll"
+        $simHubPath = Join-Path ${env:ProgramFiles(x86)} "SimHub"
+        Copy-Item -Path $csvHelperPath -Destination $simHubPath -Force
 
     - name: Build solution
       run: msbuild "Dahl Design Properties.sln" -t:rebuild -property:Configuration=Release
@@ -69,7 +104,7 @@ jobs:
     - name: Upload Artifact
       uses: ncipollo/release-action@v1
       with:
-        artifacts: 'D:\a\DahlDesignProperties\DahlDesignProperties\bin\Release\DahlDesign.dll'
+        artifacts: '${{ github.workspace }}\bin\Release\DahlDesign.dll'
         prerelease: ${{ github.event.inputs.is-pre-release }}
         replacesArtifacts: true
         allowUpdates: true
