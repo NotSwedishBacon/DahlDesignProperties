@@ -33,26 +33,40 @@ jobs:
       id: cache
       with:
         path: |
-          innounp050.rar
           SimHub.9.12.4.zip
-        key: SimHub.9.12.4
+        key: simhub-9.12.4-v3
+
+    - name: Install innounp
+      shell: pwsh
+      run: |
+        if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+        }
+        scoop install innounp
+        $scoopShims = Join-Path $env:USERPROFILE "scoop\shims"
+        Add-Content -Path $env:GITHUB_PATH -Value $scoopShims
+        if (-not (Test-Path (Join-Path $scoopShims "innounp.exe"))) {
+          throw "Scoop installed innounp, but its executable was not found"
+        }
 
     - name: Download Requirements # Used to download the SimHub DLLs - only if not in cache.
       if: steps.cache.outputs.cache-hit != 'true'
       run: | 
-        Invoke-WebRequest -Uri "https://sourceforge.net/projects/innounp/files/innounp/innounp%200.50/innounp050.rar/download" -OutFile innounp050.rar
-        Invoke-WebRequest -Uri "https://github.com/SHWotever/SimHub/releases/download/9.12.4/SimHub.9.12.4.zip" -OutFile SimHub.9.12.4.zip
+        curl.exe --fail --location --retry 3 --output SimHub.9.12.4.zip "https://github.com/SHWotever/SimHub/releases/download/9.12.4/SimHub.9.12.4.zip"
     
     - name: Extract Requirements
       shell: pwsh
       run: |
-        $innounpPath = Join-Path $env:RUNNER_TEMP "innounp"
         $simHubArchivePath = Join-Path $env:RUNNER_TEMP "simhub"
         $pluginPath = Join-Path $env:GITHUB_WORKSPACE "DLLs"
         $simHubPath = Join-Path ${env:ProgramFiles(x86)} "SimHub"
+        $innounpExe = Join-Path $env:USERPROFILE "scoop\shims\innounp.exe"
 
-        New-Item -ItemType Directory -Force -Path $innounpPath, $simHubArchivePath, $pluginPath, $simHubPath | Out-Null
-        7z x innounp050.rar "-o$innounpPath" -y | Out-Null
+        if (-not (Test-Path $innounpExe)) {
+          throw "Scoop-installed innounp was not found at $innounpExe"
+        }
+        New-Item -ItemType Directory -Force -Path $simHubArchivePath, $pluginPath, $simHubPath | Out-Null
         7z x SimHub.9.12.4.zip "-o$simHubArchivePath" -y | Out-Null
 
         $installer = Get-ChildItem -Path $simHubArchivePath -Filter "SimHubSetup_9.12.4.exe" -Recurse | Select-Object -First 1
@@ -70,7 +84,7 @@ jobs:
           "MahApps.*.dll", "SharpDX.dll", "Microsoft.Bcl.AsyncInterfaces.dll"
         )
 
-        & (Join-Path $innounpPath "innounp.exe") @extractArgs
+        & $innounpExe @extractArgs
         if ($LASTEXITCODE -ne 0) {
           throw "innounp failed with exit code $LASTEXITCODE"
         }
