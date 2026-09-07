@@ -60,7 +60,8 @@ jobs:
       run: |
         $simHubArchivePath = Join-Path $env:RUNNER_TEMP "simhub"
         $pluginPath = Join-Path $env:GITHUB_WORKSPACE "DLLs"
-        $simHubPath = Join-Path $env:SystemDrive "Program Files (x86)\SimHub"
+        $workspaceDrive = Split-Path -Path $env:GITHUB_WORKSPACE -Qualifier
+        $simHubPath = Join-Path $workspaceDrive "Program Files (x86)\SimHub"
         $innounpExe = Join-Path $env:USERPROFILE "scoop\shims\innounp.exe"
 
         if (-not (Test-Path $innounpExe)) {
@@ -109,7 +110,8 @@ jobs:
       shell: pwsh
       run: |
         $csvHelperPath = Join-Path $env:USERPROFILE ".nuget\packages\csvhelper\30.0.1\*.dll"
-        $simHubPath = Join-Path $env:SystemDrive "Program Files (x86)\SimHub"
+        $workspaceDrive = Split-Path -Path $env:GITHUB_WORKSPACE -Qualifier
+        $simHubPath = Join-Path $workspaceDrive "Program Files (x86)\SimHub"
         Copy-Item -Path $csvHelperPath -Destination $simHubPath -Force
 
     - name: Build solution
