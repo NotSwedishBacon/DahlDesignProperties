@@ -1,0 +1,46 @@
+name: Update Simhub Version
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-simhub:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch latest SimHub release
+        id: get_version
+        run: |
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/SHWotever/SimHub/releases/latest | jq -r .tag_name)
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
+          CURRENT_VERSION=$(grep -oP 'SimHub\.\K[0-9]+\.[0-9]+\.[0-9]+(?=\.zip)' .github/workflows/dotnet.yaml | head -n 1)
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version and trigger build
+        if: steps.get_version.outputs.latest_version != steps.get_version.outputs.current_version && steps.get_version.outputs.latest_version != 'null' && steps.get_version.outputs.latest_version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LATEST_VERSION="${{ steps.get_version.outputs.latest_version }}"
+          CURRENT_VERSION="${{ steps.get_version.outputs.current_version }}"
+
+          echo "Updating SimHub from $CURRENT_VERSION to $LATEST_VERSION"
+
+          sed -i "s/$CURRENT_VERSION/$LATEST_VERSION/g" .github/workflows/dotnet.yaml
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/dotnet.yaml
+          git commit -m "Update SimHub dependency to $LATEST_VERSION"
+          git push
+
+          gh workflow run dotnet.yaml -f version="$LATEST_VERSION" -f is-pre-release=false
