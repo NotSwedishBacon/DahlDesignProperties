@@ -118,28 +118,6 @@ jobs:
         $simHubPath = Join-Path $workspaceDrive "Program Files (x86)\SimHub"
         Copy-Item -Path $csvHelperPath -Destination $simHubPath -Force
 
-    - name: Auto-increment version if Push
-      if: github.event_name == 'push'
-      shell: pwsh
-      run: |
-        $pluginFile = "DataPlugin.cs"
-        $content = Get-Content $pluginFile
-        if ($content -match 'public string PluginVersion => "(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)";') {
-            $major = $matches.major
-            $minor = $matches.minor
-            $patch = [int]$matches.patch + 1
-            $newVersion = "$major.$minor.$patch"
-            $content = $content -replace 'public string PluginVersion => "[^"]+";', "public string PluginVersion => `"$newVersion`";"
-            Set-Content -Path $pluginFile -Value $content
-            Write-Host "Auto-incremented version to $newVersion"
-
-            git config --global user.name "GitHub Actions"
-            git config --global user.email "actions@github.com"
-            git add $pluginFile
-            git commit -m "chore: auto-increment version to $newVersion [skip ci]"
-            git push
-        }
-
     - name: Build solution
       run: msbuild "Dahl Design Properties.sln" -t:rebuild -property:Configuration=Release
 
