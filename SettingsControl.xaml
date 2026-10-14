@@ -8,7 +8,16 @@
     xmlns:ui="clr-namespace:SimHub.Plugins.UI;assembly=SimHub.Plugins" d:DesignHeight="720" d:DesignWidth="800">
 
     <Grid>
-        <styles:SHTabControl x:Name="tabcontrol">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" x:Name="UpdatePanel" Visibility="Collapsed" Background="#FF4444" Margin="0,0,0,10" Padding="10">
+            <TextBlock x:Name="UpdateText" Foreground="White" FontWeight="Bold" FontSize="14" Margin="0,0,0,5" Text="Update Available!" />
+            <Button x:Name="UpdateButton" Content="Update Plugin and Restart SimHub" Click="UpdateButton_Click" HorizontalAlignment="Left" Padding="10,5" />
+        </StackPanel>
+
+        <styles:SHTabControl Grid.Row="1" x:Name="tabcontrol">
             <styles:SHTabItem Header="Dash settings">
                 <ScrollViewer>
                     <StackPanel>

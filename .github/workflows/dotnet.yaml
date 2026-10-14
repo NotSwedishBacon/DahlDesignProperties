@@ -4,12 +4,10 @@
 name: Create DahlDesignProperties DLL
 
 on:
+  push:
+    branches: [ "main" ]
   workflow_dispatch:
     inputs:
-      version:
-        type: string
-        description: What Properties version does this correspond to?
-        required: true
       is-pre-release:
         type: boolean
         required: true
@@ -116,18 +114,32 @@ jobs:
         $simHubPath = Join-Path $workspaceDrive "Program Files (x86)\SimHub"
         Copy-Item -Path $csvHelperPath -Destination $simHubPath -Force
 
+    - name: Extract Version
+      id: extract_version
+      shell: pwsh
+      run: |
+        $content = Get-Content "DataPlugin.cs" -Raw
+        if ($content -match 'public string PluginVersion => "(?<version>\d+\.\d+\.\d+)";') {
+            $version = $matches.version
+            Write-Host "Found version: $version"
+            echo "PLUGIN_VERSION=$version" >> $env:GITHUB_ENV
+        } else {
+            throw "Could not find PluginVersion in DataPlugin.cs"
+        }
+
     - name: Build solution
       run: msbuild "Dahl Design Properties.sln" -t:rebuild -property:Configuration=Release
 
     - name: Upload Artifact
       uses: ncipollo/release-action@v1
+      if: github.event_name == 'workflow_dispatch'
       with:
         artifacts: '${{ github.workspace }}\bin\Release\DahlDesign.dll'
         prerelease: ${{ github.event.inputs.is-pre-release }}
         replacesArtifacts: true
         allowUpdates: true
-        name: ${{ github.event.inputs.version }}
-        tag: ${{ github.event.inputs.version }}
+        name: ${{ env.PLUGIN_VERSION }}
+        tag: ${{ env.PLUGIN_VERSION }}
       
       
     
