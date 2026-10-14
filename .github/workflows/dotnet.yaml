@@ -4,6 +4,8 @@
 name: Create DahlDesignProperties DLL
 
 on:
+  push:
+    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       version:
@@ -121,6 +123,7 @@ jobs:
 
     - name: Upload Artifact
       uses: ncipollo/release-action@v1
+      if: github.event_name == 'workflow_dispatch'
       with:
         artifacts: '${{ github.workspace }}\bin\Release\DahlDesign.dll'
         prerelease: ${{ github.event.inputs.is-pre-release }}
