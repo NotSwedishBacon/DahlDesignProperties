@@ -35,8 +35,8 @@ jobs:
       id: cache
       with:
         path: |
-          SimHub.9.12.4.zip
-        key: simhub-9.12.4-v3
+          SimHub.9.13.2.zip
+        key: simhub-9.13.2-v3
 
     - name: Install innounp
       shell: pwsh
@@ -55,7 +55,7 @@ jobs:
     - name: Download Requirements # Used to download the SimHub DLLs - only if not in cache.
       if: steps.cache.outputs.cache-hit != 'true'
       run: | 
-        curl.exe --fail --location --retry 3 --output SimHub.9.12.4.zip "https://github.com/SHWotever/SimHub/releases/download/9.12.4/SimHub.9.12.4.zip"
+        curl.exe --fail --location --retry 3 --output SimHub.9.13.2.zip "https://github.com/SHWotever/SimHub/releases/download/9.13.2/SimHub.9.13.2.zip"
     
     - name: Extract Requirements
       shell: pwsh
@@ -70,9 +70,9 @@ jobs:
           throw "Scoop-installed innounp was not found at $innounpExe"
         }
         New-Item -ItemType Directory -Force -Path $simHubArchivePath, $pluginPath, $simHubPath | Out-Null
-        7z x SimHub.9.12.4.zip "-o$simHubArchivePath" -y | Out-Null
+        7z x SimHub.9.13.2.zip "-o$simHubArchivePath" -y | Out-Null
 
-        $installer = Get-ChildItem -Path $simHubArchivePath -Filter "SimHubSetup_9.12.4.exe" -Recurse | Select-Object -First 1
+        $installer = Get-ChildItem -Path $simHubArchivePath -Filter "SimHubSetup_9.13.2.exe" -Recurse | Select-Object -First 1
         if ($null -eq $installer) {
           throw "SimHub installer was not found after extracting the archive"
         }
