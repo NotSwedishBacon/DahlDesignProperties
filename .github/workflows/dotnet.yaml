@@ -118,7 +118,7 @@ jobs:
       id: extract_version
       shell: pwsh
       run: |
-        $content = Get-Content "DataPlugin.cs"
+        $content = Get-Content "DataPlugin.cs" -Raw
         if ($content -match 'public string PluginVersion => "(?<version>\d+\.\d+\.\d+)";') {
             $version = $matches.version
             Write-Host "Found version: $version"

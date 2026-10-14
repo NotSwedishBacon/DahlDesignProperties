@@ -27,7 +27,7 @@ namespace DahlDesign.Plugin
         {
             try
             {
-                var response = await client.GetStringAsync("https://api.github.com/repos/andreasdahl1987/DahlDesignProperties/releases/latest");
+                var response = await client.GetStringAsync("https://api.github.com/repos/NotSwedishBacon/DahlDesignProperties/releases/latest");
 
                 // Very basic regex parsing to avoid bringing in JSON dependencies, since this needs to be minimal
                 var tagMatch = Regex.Match(response, "\"tag_name\":\\s*\"(.*?)\"");
