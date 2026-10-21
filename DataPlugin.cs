@@ -26,7 +26,7 @@ namespace DahlDesign.Plugin
         public int counter = 0;
         public ImageSource PictureIcon => this.ToIcon(Properties.Resources.Dahl_icon);
         public string LeftMenuTitle => "Dahl Design";
-        public string PluginVersion => "1.18.0";
+        public string PluginVersion => "1.18.1";
         public DahlGameData dahlGameData = new DahlGameData();
         public List<SectionBase> Sections = new List<SectionBase>();
         private bool sectionsAreDirty = true;
