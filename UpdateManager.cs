@@ -95,29 +95,28 @@ namespace DahlDesign.Plugin
 
                 string targetDllPath = Path.Combine(simHubFolder, "DahlDesign.dll");
 
-                string batFilePath = Path.Combine(tempDir, "update_simhub.bat");
-
-                string batContent = $@"
-@echo off
-timeout /t 2 /nobreak > nul
-taskkill /F /IM SimHubWPF.exe > nul 2>&1
-timeout /t 2 /nobreak > nul
-copy /Y ""{tempDllPath}"" ""{targetDllPath}""
-start """" ""{simHubExecutable}""
-del ""%~f0""
+                // Use a PowerShell EncodedCommand to safely execute the script
+                // This avoids command injection vulnerabilities by not relying on string escaping in cmd.exe
+                string psScript = $@"
+Start-Sleep -Seconds 2
+Stop-Process -Name 'SimHubWPF' -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+Copy-Item -Path '{tempDllPath.Replace("'", "''")}' -Destination '{targetDllPath.Replace("'", "''")}' -Force
+Start-Process -FilePath '{simHubExecutable.Replace("'", "''")}'
 ";
-                File.WriteAllText(batFilePath, batContent);
+                // PowerShell encoded commands must be UTF-16LE
+                byte[] scriptBytes = System.Text.Encoding.Unicode.GetBytes(psScript);
+                string encodedCommand = Convert.ToBase64String(scriptBytes);
 
                 ProcessStartInfo psi = new ProcessStartInfo
                 {
-                    FileName = batFilePath,
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand {encodedCommand}",
                     UseShellExecute = true,
                     WindowStyle = ProcessWindowStyle.Hidden,
                     Verb = "runas" // Request administrator privileges if necessary for Program Files copying
                 };
                 Process.Start(psi);
-
-                // The batch script will kill SimHub shortly, but we can also just let it happen.
             }
             catch (Exception ex)
             {
