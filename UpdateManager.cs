@@ -73,6 +73,14 @@ namespace DahlDesign.Plugin
             if (!UpdateAvailable || string.IsNullOrEmpty(DownloadUrl))
                 return;
 
+            if (!Uri.TryCreate(DownloadUrl, UriKind.Absolute, out Uri uri) ||
+                uri.Host != "github.com" ||
+                !uri.AbsolutePath.StartsWith("/NotSwedishBacon/DahlDesignProperties/releases/download/"))
+            {
+                SimHub.Logging.Current.Error($"[DahlDesign] Insecure download URL detected: {DownloadUrl}");
+                return;
+            }
+
             try
             {
                 string tempDir = Path.Combine(Path.GetTempPath(), "DahlDesignUpdate");
